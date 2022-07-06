@@ -1,3 +1,4 @@
+from multiprocessing import pool
 from fastapi import HTTPException, status
 
 import asyncpg
@@ -36,17 +37,8 @@ class AsyncDB():
     async def close_pool(self):
         await self.pool.close()
 
-    async def fetch(self, sql, *args) -> list or None:
-        pool = await self.get_pool()
-        conn = await pool.acquire()
-        try:
-            res = await conn.fetch(sql, *args)
-            if res:
-                res = [dict(el) for el in res]
-                return res
-
-        except Exception as error:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error)
-        finally:
-            await self.pool.release(conn)
+    async def connection(self):
+        if not self.pool:
+            await self.get_pool()
+        async with self.pool.acquire() as db:
+            yield db
