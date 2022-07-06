@@ -1,5 +1,5 @@
 
-CREATE OR REPLACE FUNCTION cp_GetNerestOrders(
+CREATE OR REPLACE FUNCTION cp_GetNearestOrders(
   IN lng NUMERIC, IN lat NUMERIC
 )
     RETURNS SETOF jsonb
@@ -106,4 +106,4 @@ END;
 $BODY$;
 
 
-SELECT cp_GetNerestOrders(28.66468, 50.26009)
+-- SELECT cp_GetNerestOrders(28.66468, 50.26009)

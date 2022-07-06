@@ -1,9 +1,7 @@
 from fastapi import HTTPException, status
-from config import settings
 
 import asyncpg
 import json
-import asyncio
 
 
 class AsyncDB():
@@ -35,32 +33,20 @@ class AsyncDB():
                 init=codec)
         return self.pool
 
-    async def fetch(self, sql, *args) -> list or None:
-        conn = await self.pool.acquire()
+    async def close_pool(self):
+        await self.pool.close()
 
+    async def fetch(self, sql, *args) -> list or None:
+        pool = await self.get_pool()
+        conn = await pool.acquire()
         try:
             res = await conn.fetch(sql, *args)
             if res:
                 res = [dict(el) for el in res]
                 return res
 
-      
         except Exception as error:
-            print(error)
-
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=error)
         finally:
             await self.pool.release(conn)
-
-
-if __name__ == '__main__':
-
-    async def main():
-        db = AsyncDB(dsn='')
-        await db.get_pool()
-
-        res = await db.fetch("""SELECT usename FROM pg_catalog.pg_user""")
-        print(res)
-
-    asyncio.get_event_loop().run_until_complete(main())
