@@ -6,7 +6,13 @@ import json
 
 
 class AsyncDB():
-    def __init__(self, dsn, codec='jsonb', min_size=1, max_size=10) -> None:
+    def __init__(
+        self,
+        dsn,
+        codec='jsonb',
+        min_size=1,
+        max_size=10
+    ) -> None:
         self.pool = None
         self.dsn = dsn
         self.codec = codec
@@ -24,6 +30,8 @@ class AsyncDB():
     async def get_pool(self):
         if self.codec == 'jsonb':
             codec = self.jsonb_codec
+        else:
+            codec=None
 
         if not self.pool:
             self.pool = await asyncpg.create_pool(
@@ -40,5 +48,6 @@ class AsyncDB():
     async def connection(self):
         if not self.pool:
             await self.get_pool()
+            
         async with self.pool.acquire() as db:
             yield db

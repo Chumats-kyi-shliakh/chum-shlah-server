@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS customers (
 
 CREATE TABLE IF NOT EXISTS order_basket (
 	  basket_id serial PRIMARY KEY
-	, completed BOOL NOT NULL DEFAULT FALSE
+	, is_complete BOOL NOT NULL DEFAULT FALSE
 	, creation_date timestamp with time zone NOT NULL DEFAULT now()
 	, change_time timestamp with time zone NOT NULL
 	, customer_id int REFERENCES customers 

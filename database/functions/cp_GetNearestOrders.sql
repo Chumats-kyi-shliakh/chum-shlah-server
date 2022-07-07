@@ -1,109 +1,156 @@
 
 CREATE OR REPLACE FUNCTION cp_GetNearestOrders(
-  IN lng NUMERIC, IN lat NUMERIC
+  	  IN lng NUMERIC
+	, IN lat NUMERIC
+	, IN stores_limit INT DEFAULT 5 
+	, IN items_limit INT DEFAULT 5
+
 )
     RETURNS SETOF jsonb
     LANGUAGE 'plpgsql'
     STABLE PARALLEL SAFE
 AS $BODY$ 
+DECLARE
 BEGIN
 RETURN QUERY 
 WITH stock_in_stores AS (
---     get nn stores for driver
-        SELECT
-              s.id AS storage_id
-            , s.fund_id
-            , s.geom
-            , name
-            , adress
-            , pa.product_id
-            , pa.quantity
-            , dist_m
-        FROM 
-    (
-        SELECT 
-              id 
-            , fund_id
-            , name
-            , city || ', ' || street || ', ' || house_number AS adress
+		SELECT	
+              storage_id 
+			, storage_name
+			, full_adress
             , geom
-            , geom::geography
-              <-> cp_PointWGS(28.66468, 50.26009)::geography AS dist_m
-        FROM public.storages
-        ORDER BY dist_m
-        OFFSET 0
-        LIMIT 10) s
-        LEFT JOIN public.product_availabilities pa
-        ON s.id = pa.storage_id
+	 		, stock_id
+			, product_id
+			, quantity
+			, dist_m
+       FROM (
+		   SELECT 
+              storage_id 
+			, storage_name
+            , geom
+			, CASE 
+				WHEN city IS NOT NULL THEN district || ', '
+				ELSE district END ||
+			  CASE 
+				WHEN street IS NOT NULL THEN city || ', '
+				ELSE city END ||
+			 CASE 
+				WHEN house_number IS NOT NULL THEN street || ', '
+				ELSE street END || house_number AS full_adress
+            , floor(geom::geography
+              <-> cp_PointWGS(lng, lat)::geography)::int AS dist_m
+        FROM storages
+		ORDER BY dist_m
+        LIMIT stores_limit
+	   ) o
+		LEFT JOIN public.stocks st USING (storage_id) 
         WHERE quantity > 0
     ),
-    item_in_oreder AS (
+	nn_orders AS (
+	SELECT 
+		      customer_id
+			, customer_name
+			, o.geom
+			, o.full_adress
+			, item_id
+			, o.product_id
+			, o.quantity
+			, storage_id
+			, o.dist_m
+	FROM stock_in_stores ss
+	CROSS JOIN LATERAL (
         SELECT 
-              customers.id AS order_id
-            , co.geom
-            , product_id
-            , quantity
-            , city || ', ' || street || ', ' || house_number AS adress
-        FROM public.customers 
-        LEFT JOIN public.customer_orders co ON customers.id = co.customer_id
-        LEFT JOIN public.carts c ON co.cart_id = c.id
-        LEFT JOIN public.cart_items ci ON c.id = ci.cart_id
-    ),
-    nn_join AS (
---     get nn pois for stores
-    SELECT 
-             io.order_id
-           , io.geom
-            ,io.adress
-           , sum(io.quantity)
-           , array_agg(io.dist_m) AS dist_m
-           , array_agg(storage_id) as store_id
-       FROM stock_in_stores s 
-       CROSS JOIN LATERAL(
-       SELECT   
-             order_id
-           , geom
-           , product_id
-           , quantity
-           , adress
-           , s.geom::geography <-> i.geom::geography AS dist_m
-       FROM item_in_oreder i
-       WHERE i.product_id = s.product_id AND s.quantity > 0
-       ORDER BY dist_m
-       LIMIT 3
-       ) io
-        GROUP BY
-             io.order_id
-           , io.geom
-           , io.product_id
-        , io.quantity , io.adress
-
-    ),
-    add_temp as (SELECT DISTINCT              
-              storage_id
-            , fund_id
+              customer_id
+			, customer_name
+			, geom
+			, CASE 
+				WHEN city IS NOT NULL THEN district || ', '
+				ELSE district END ||
+			  CASE 
+				WHEN street IS NOT NULL THEN city || ', '
+				ELSE city END ||
+			 CASE 
+				WHEN house_number IS NOT NULL THEN street || ', '
+				ELSE street END || house_number AS full_adress
+			, item_id
+			, product_id
+			, quantity
+			, floor(ss.geom::geography <-> c.geom::geography)::int as dist_m
+        FROM customers c
+ 		LEFT JOIN (SELECT * FROM order_basket WHERE is_complete = FALSE) ob USING (customer_id)
+		LEFT JOIN (SELECT * FROM order_items WHERE is_complete = FALSE) oi USING (basket_id) 
+		WHERE ss.product_id = oi.product_id
+		ORDER BY dist_m
+		LIMIT items_limit
+    	) o
+	),
+	agg_stores AS (
+		SELECT
+			  storage_id 
+			, storage_name
+			, full_adress
             , geom
-            , name
-            , adress
-            , dist_m
-             FROM stock_in_stores
-
-                )
+			, jsonb_agg(jsonb_build_object(
+				 'stock_id', 	stock_id
+				,'product_id',  product_id
+            	,'quantity', 	quantity
+			)) as product
+			, dist_m
+		FROM stock_in_stores
+		GROUP BY 
+			  storage_id
+			, storage_name
+			, full_adress
+            , geom
+			, dist_m
+	),
+	agg_dist AS (
+		SELECT
+		customer_id
+		, jsonb_agg(jsonb_build_object(
+				'storage_id',  storage_id
+            	,'dist_m', 	dist_m
+			)) as dist_m
+		FROM (SELECT DISTINCT ON (customer_id, storage_id) 
+			  customer_id, storage_id, dist_m 
+			  FROM nn_orders) orders
+		GROUP BY customer_id
+	),
+	agg_orders AS (
+		SELECT 
+			  customer_id
+			, customer_name
+			, geom
+			, full_adress
+			, jsonb_agg(jsonb_build_object(
+				 'item_id', 	item_id
+				,'product_id',  product_id
+            	,'quantity', 	quantity
+			)) as product
+		, d.dist_m
+			FROM (SELECT DISTINCT ON (customer_id, item_id) * FROM nn_orders) orders
+		LEFT JOIN agg_dist d USING (customer_id)
+		GROUP BY 
+			  customer_id 
+			, customer_name
+			, full_adress
+            , geom
+		,d.dist_m
+	)
     SELECT
          jsonb_build_object(
          'customer_orders', (SELECT jsonb_build_object(
                             'type', 'FeatureCollection',
                             'features', json_agg(ST_AsGeoJSON(t.*)::jsonb))
-                            FROM nn_join t),
+                            FROM agg_orders t),
          'storages',        (SELECT jsonb_build_object(
                             'type', 'FeatureCollection',
                             'features', json_agg(ST_AsGeoJSON(t2.*)::jsonb))
-                            FROM add_temp t2)
-                            )
-    ;
+                            FROM agg_stores t2)
+                            );
 
 END;
 $BODY$;
 
+SELECT cp_GetNearestOrders(28.66468, 50.26009)
 
--- SELECT cp_GetNerestOrders(28.66468, 50.26009)

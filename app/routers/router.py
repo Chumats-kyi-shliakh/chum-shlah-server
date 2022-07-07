@@ -21,13 +21,13 @@ async def get_delivery(lng: float = 28.66468, lat: float = 50.26009, conn=Depend
 
 
 @router.get('/directions', status_code=status.HTTP_200_OK)
-async def get_directions(origin: str = '28.66468,50.26009', destination: str = '30.11233,49.79832', conn=Depends(db.connection)):
+async def get_directions(origin: str = '28.66468,to_jsonb50.26009', destination: str = '30.11233,49.79832', conn=Depends(db.connection)):
 
     try:
         lng1, lat1 = [float(x.strip()) for x in origin.split(',')]
         lng2, lat2 = [float(x.strip()) for x in destination.split(',')]
     except:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
     sql_q = """SELECT * FROM cp_FromAtoB($1, $2, $3, $4)"""
 
