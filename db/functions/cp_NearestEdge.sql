@@ -9,6 +9,3 @@ BEGIN
     )::geography
   LIMIT 1;
 END $BODY$ LANGUAGE 'plpgsql';
-
-
--- select cp_NearestEdge(28.66468004491071, 50.26009144660287);

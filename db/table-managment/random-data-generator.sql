@@ -5,7 +5,7 @@ SELECT DISTINCT ON (fund_name)
     , floor(random() * 10000) AS tg_bot_key
     , now() as creation_date
     , now() as change_time
-FROM public.polygons
+FROM public.osm_polygons
 WHERE 
         tags ->> 'name' IS NOT NULL 
     AND tags ->> 'shop' = 'mall'
@@ -35,7 +35,7 @@ SELECT
     , now() as creation_date
     , now() as change_time
 	, area_id as fund_id
-FROM public.polygons
+FROM public.osm_polygons
 LEFT JOIN public.funds on funds.fund_id = area_id
 WHERE funds.fund_id is not null
     ;
@@ -189,7 +189,7 @@ SELECT
     , tags ->> 'addr:housenumber' AS house_number
     , now() as creation_date
     , now() as change_time
-FROM public.polygons
+FROM public.osm_polygons
 WHERE 
         tags ->> 'name' IS NOT NULL 
    AND (tags ->> 'amenity' in ('townhall', 'government')

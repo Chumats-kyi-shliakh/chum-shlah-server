@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routers import router
+from .db import db
 
 
 ORIGINS = [
@@ -14,6 +15,16 @@ ORIGINS = [
 
 app = FastAPI()
 
+
+@app.on_event("startup")
+async def startup_event():
+    await db.get_pool()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await db.close_pool()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ORIGINS,
@@ -22,4 +33,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router.router, prefix="/router",)
+app.include_router(router.router, prefix="/router")

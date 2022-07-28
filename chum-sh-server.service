@@ -5,6 +5,7 @@ After=network.target
 [Service]
 User=paltis
 Group=paltis
+Restart=on-failure
 WorkingDirectory=/home/paltis/chum-shlah-router/
 Environment="PATH=/home/paltis/chum-shlah-router/venv/bin"
 EnvironmentFile=/home/paltis/chum-shlah-router/.env

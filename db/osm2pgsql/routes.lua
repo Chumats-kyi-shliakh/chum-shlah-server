@@ -3,7 +3,7 @@ local srid = 4326
 local tables = {}
 
 
-tables.lines = osm2pgsql.define_way_table('highway', {
+tables.lines = osm2pgsql.define_way_table('osm_highway', {
     { column = 'nodes', type = 'jsonb' },
     { column = 'tags', type = 'jsonb' },
     { column = 'geom', type = 'linestring', projection = srid },

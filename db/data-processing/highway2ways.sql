@@ -24,12 +24,12 @@ WITH splited_line as (
             THEN ST_Split(highway.geom, sp_points.split_geom)
             ELSE highway.geom
           END AS geom
-    FROM highway
+    FROM osm_highway as highway
         CROSS JOIN LATERAL (
             SELECT ST_Union(
                     ST_Points(ST_Intersection(highway.geom, sp_line.geom))
                 ) as split_geom
-            FROM highway AS sp_line
+            FROM osm_highway AS sp_line
             WHERE tags->>'highway' in (
                     SELECT tag_value
                     FROM ways_configuration

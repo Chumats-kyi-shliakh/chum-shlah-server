@@ -79,6 +79,3 @@ FROM prettier t;
 
 END;
 $BODY$;
-
-SELECT cp_FromAtoB(28.66468, 50.26009, 30.11233, 49.79832) 
-

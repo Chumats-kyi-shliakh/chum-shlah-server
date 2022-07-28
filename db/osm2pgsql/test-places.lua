@@ -3,7 +3,7 @@ local srid = 4326
 
 local tables = {}
 
-tables.polygons = osm2pgsql.define_area_table('polygons', {{
+tables.polygons = osm2pgsql.define_area_table('osm_polygons', {{
     column = 'tags',
     type = 'jsonb'
 }, {

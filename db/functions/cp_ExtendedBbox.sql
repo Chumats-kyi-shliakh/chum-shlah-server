@@ -15,5 +15,3 @@ AS $BODY$
                  ,5558)
             , units_to_expand);
 $BODY$ LANGUAGE 'sql';
-
-
