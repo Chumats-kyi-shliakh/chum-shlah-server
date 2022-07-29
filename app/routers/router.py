@@ -53,8 +53,3 @@ async def get_tcp(q: schemas.RouteQuery, conn=Depends(db.connection)):
     except:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-        
-@router.get('/test')
-def test():
-    return 'Ok'
