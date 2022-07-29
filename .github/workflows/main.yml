@@ -23,7 +23,7 @@ jobs:
       - name: SFTP Deploy
         uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          username: paltis
+          username: root
           server: ${{ secrets.SERVER }}
           port: 22 # default is 22
           ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -36,3 +36,10 @@ jobs:
           
           # sftp args
           args: '-o ConnectTimeout=5'
+      - name: Reload supervisor
+        uses: garygrossgarten/github-action-ssh@release
+        with:
+          command: supervisorctl restart all
+          host: ${{ secrets.SERVER }}
+          username: root
+          privateKey: ${{ secrets.SSH_PRIVATE_KEY}}
